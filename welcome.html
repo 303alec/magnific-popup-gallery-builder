@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
- <title>Image Gallery</title>
+ <title>magnific-popup.js - Gallery Builder Interface</title>
  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
  <style>
   .upload-sidebar {
@@ -22,13 +22,18 @@
    width: 100%;
    height: auto;
   }
+  .btn-secondary {
+    position: fixed;
+    top: 90vh;
+    left: 5vw;
+  }
  </style>
 </head>
 <body>
 
  <section id="gallery" class="white-text">
   <div class="container">
-   <h2>Glimpses of Pride</h2>
+   <h2>magnific-popup.js - Gallery Builder Interface</h2><br>
    <div class="row" id="imageContainer">
    </div>
   </div>
@@ -39,7 +44,8 @@
   <input type="file" id="fileInput" multiple accept="image/*">
  </div>
 
- <button id="addButton" class="btn btn-primary">+</button>
+  <button id="titleButton" class="btn btn-primary">+ New Section</button><br>
+ <button id="addButton" class="btn btn-primary"><a>+ Image <img src="img.jpg"></a></button><br>
  <button id="exportButton" class="btn btn-secondary">Export Script</button>
 
  <pre id="galleryCodeContainer"></pre>
@@ -49,7 +55,8 @@
   const fileInput = document.getElementById('fileInput');
   const imageContainer = document.getElementById('imageContainer');
   const addButton = document.getElementById('addButton');
-  const exportButton = document.getElementById('exportButton');
+  const titleButton = document.getElementById('titleButton');
+	const exportButton = document.getElementById('exportButton');
 
   // Function to create thumbnail and input fields
   function createThumbnail(file) {
@@ -85,43 +92,98 @@
    reader.readAsDataURL(file);
   }
 
-  // Function to generate gallery code
-function generateGalleryCode(randomCode, galleryItems) {
+  // Function to create title input field
+function createTitleInput() {
+  const titleInput = document.createElement('input');
+  titleInput.type = 'text';
+  titleInput.placeholder = 'Enter section name';
+  titleInput.classList.add('title-input');
+  titleInput.addEventListener('input', updateGalleryCode);
+  return titleInput;
+}
+
+// Function to group gallery items by title
+function groupGalleryItems(galleryItems) {
+  const groupedItems = {};
+  let currentTitle = '';
+
+  galleryItems.forEach((item, index) => {
+    if (item.classList.contains('title-input')) {
+      currentTitle = item.value.trim();
+      if (currentTitle) {
+        groupedItems[currentTitle] = [];
+      }
+    } else {
+      if (currentTitle) {
+        groupedItems[currentTitle].push(item);
+      }
+    }
+  });
+
+  return groupedItems;
+}
+
+// Function to generate gallery code
+function generateGalleryCode(randomCode, groupedItems) {
   const galleryCode = document.createElement('div');
 
   galleryCode.innerHTML = `
     <section id="gallery" class="white-text">
       <div class="container">
-        <h2>Glimpses of Pride</h2>
-        <div class="row">
-          ${Array.from(galleryItems).map((item, index) => {
-            const img = item.querySelector('img');
-            const srcInput = item.querySelector('input[placeholder="Enter image src"]');
-            const altInput = item.querySelector('input[placeholder="Enter alt text"]');
+        ${Object.entries(groupedItems).map(([title, items]) => {
+          const numCols = items.length < 3 ? 12 / items.length : 4;
+          const rows = [];
+          
+          for (let i = 0; i < items.length; i += 3) {
+            const rowItems = items.slice(i, i + 3);
+            const rowCode = `
+              <div class="row">
+                ${rowItems.map((item) => {
+                  const img = item.querySelector('img');
+                  const srcInput = item.querySelector('input[placeholder="Enter image src"]');
+                  const altInput = item.querySelector('input[placeholder="Enter alt text"]');
 
-            const src = srcInput.value;
-            const alt = altInput.value;
-            const extension = src.split('.').pop();
-            const uniqueCode = item.dataset.uniqueCode;
+                  const src = srcInput.value;
+                  const alt = altInput.value;
+                  const extension = src.split('.').pop();
+                  const uniqueCode = item.dataset.uniqueCode;
 
-            // Generate unique image path using the random code and unique filename
-            const imagePath = `./img/${randomCode}/${uniqueCode}.${extension}`;
-            const thumbnailPath = `./img/${randomCode}/${uniqueCode}_T.${extension}`;
+                  // Generate unique image path using the random code and unique filename
+                  const imagePath = `./img/${randomCode}/${uniqueCode}.${extension}`;
+                  const thumbnailPath = `./img/${randomCode}/${uniqueCode}_T.${extension}`;
 
-            return `
-              <div class="col-md-4">
-                <a class="gallery-item" href="${imagePath}">
-                  <img src="${thumbnailPath}" alt="${alt}" class="img-fluid">
-                </a>
+                  return `
+                    <div class="col-md-${numCols}">
+                      <a class="gallery-item" href="${imagePath}">
+                        <img src="${thumbnailPath}" alt="${alt}" class="img-fluid">
+                      </a>
+                    </div>
+                  `;
+                }).join('')}
               </div>
             `;
-          }).join('')}
-        </div>
+            rows.push(rowCode);
+          }
+
+          return `
+            <h2>${title}</h2>
+            ${rows.join('')}
+          `;
+        }).join('')}
       </div>
     </section>
   `;
 
   return galleryCode.innerHTML;
+}
+
+// Function to update gallery code
+function updateGalleryCode() {
+  const galleryCodeContainer = document.getElementById('galleryCodeContainer');
+  const galleryItems = document.querySelectorAll('.gallery-item, .title-input');
+  const groupedItems = groupGalleryItems(galleryItems);
+  const randomCode = Math.random().toString(36).substring(2, 7).toUpperCase();
+  galleryCodeContainer.textContent = generateGalleryCode(randomCode, groupedItems);
 }
 
 // Function to generate and download bash script
@@ -143,7 +205,8 @@ function generateBashScript() {
     bashScript += `sips -Z 512 "./img/${randomCode}/${uniqueCode}.${extension}" --out "./img/${randomCode}/${uniqueCode}_T.${extension}"\n`;
   });
 
-  bashScript += `\necho '${generateGalleryCode(randomCode, galleryItems)}'\n`;
+  const groupedItems = groupGalleryItems(document.querySelectorAll('.gallery-item, .title-input'));
+  bashScript += `\necho '${generateGalleryCode(randomCode, groupedItems)}'\n`;
 
   const blob = new Blob([bashScript], { type: 'text/plain' });
   const url = URL.createObjectURL(blob);
@@ -181,6 +244,12 @@ function generateBashScript() {
   addButton.addEventListener('click', () => {
    fileInput.click(); // Trigger the file input
   });
+  // Add button click event handler
+titleButton.addEventListener('click', () => {
+  const titleInput = createTitleInput();
+  imageContainer.appendChild(titleInput);
+  titleInput.focus();
+});
 
   // Export Script button click event handler
   exportButton.addEventListener('click', generateBashScript);
