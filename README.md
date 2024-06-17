@@ -71,7 +71,29 @@ Contributions are welcome! If you have any suggestions, bug reports, or feature 
 
 ## Updates
 
-- [Empty]
+Version 1.1 (Planned)
+
+Add support for custom thumbnail sizes
+Implement drag-and-drop reordering of gallery items
+Improve error handling and validation for user inputs
+
+Version 1.2 (Planned)
+
+Introduce a configuration panel for customizing gallery styles (e.g., grid layout, spacing, border)
+Add option to include captions for each gallery item
+Enhance accessibility by improving keyboard navigation and ARIA attributes
+
+Version 1.3 (Planned)
+
+Implement server-side processing for handling large galleries and optimizing performance
+Add support for multiple galleries on a single page
+Introduce a gallery preview feature for instant visual feedback during gallery creation
+
+Version 2.0 (Future)
+
+Develop a plugin architecture for extending the functionality of the gallery interface
+Implement user authentication and authorization for personalized gallery management
+Introduce collaborative features for team-based gallery creation and editing
 
 ## License
 
