@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html>
+<head>
+ <title>Image Gallery</title>
+ <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+ <style>
+  .upload-sidebar {
+   position: fixed;
+   top: 50%;
+   right: 20px;
+   transform: translateY(-50%);
+   padding: 20px;
+   border: 1px dashed #ccc;
+   text-align: center;
+  }
+
+  .gallery-item {
+   margin-bottom: 15px;
+  }
+
+  .img-fluid {
+   width: 100%;
+   height: auto;
+  }
+ </style>
+</head>
+<body>
+
+ <section id="gallery" class="white-text">
+  <div class="container">
+   <h2>Glimpses of Pride</h2>
+   <div class="row" id="imageContainer">
+   </div>
+  </div>
+ </section>
+
+ <div id="dropZone" class="upload-sidebar">
+  <p>Drag & drop images here or click to upload</p>
+  <input type="file" id="fileInput" multiple accept="image/*">
+ </div>
+
+ <button id="addButton" class="btn btn-primary">+</button>
+ <button id="exportButton" class="btn btn-secondary">Export Script</button>
+
+ <pre id="galleryCodeContainer"></pre>
+
+ <script>
+  const dropZone = document.getElementById('dropZone');
+  const fileInput = document.getElementById('fileInput');
+  const imageContainer = document.getElementById('imageContainer');
+  const addButton = document.getElementById('addButton');
+  const exportButton = document.getElementById('exportButton');
+
+  // Function to create thumbnail and input fields
+  function createThumbnail(file) {
+   const reader = new FileReader();
+   reader.onload = function(e) {
+    const img = document.createElement('img');
+    img.src = e.target.result;
+    img.classList.add('img-fluid');
+
+    const srcInput = document.createElement('input');
+    srcInput.type = 'text';
+    srcInput.value = file.name; // Initial value
+    srcInput.placeholder = 'Enter image src';
+
+    const altInput = document.createElement('input');
+    altInput.type = 'text';
+    altInput.placeholder = 'Enter alt text';
+
+    const galleryItem = document.createElement('a');
+    galleryItem.classList.add('gallery-item');
+    galleryItem.appendChild(img);
+    galleryItem.appendChild(srcInput);
+    galleryItem.appendChild(altInput);
+
+    imageContainer.appendChild(galleryItem);
+
+    // Update gallery code whenever an input value changes
+    srcInput.addEventListener('input', updateGalleryCode);
+    altInput.addEventListener('input', updateGalleryCode);
+
+    updateGalleryCode(); // Initial update
+   };
+   reader.readAsDataURL(file);
+  }
+
+  // Function to generate gallery code
+function generateGalleryCode(randomCode, galleryItems) {
+  const galleryCode = document.createElement('div');
+
+  galleryCode.innerHTML = `
+    <section id="gallery" class="white-text">
+      <div class="container">
+        <h2>Glimpses of Pride</h2>
+        <div class="row">
+          ${Array.from(galleryItems).map((item, index) => {
+            const img = item.querySelector('img');
+            const srcInput = item.querySelector('input[placeholder="Enter image src"]');
+            const altInput = item.querySelector('input[placeholder="Enter alt text"]');
+
+            const src = srcInput.value;
+            const alt = altInput.value;
+            const extension = src.split('.').pop();
+            const uniqueCode = item.dataset.uniqueCode;
+
+            // Generate unique image path using the random code and unique filename
+            const imagePath = `./img/${randomCode}/${uniqueCode}.${extension}`;
+            const thumbnailPath = `./img/${randomCode}/${uniqueCode}_T.${extension}`;
+
+            return `
+              <div class="col-md-4">
+                <a class="gallery-item" href="${imagePath}">
+                  <img src="${thumbnailPath}" alt="${alt}" class="img-fluid">
+                </a>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    </section>
+  `;
+
+  return galleryCode.innerHTML;
+}
+
+// Function to generate and download bash script
+function generateBashScript() {
+  const galleryItems = document.querySelectorAll('.gallery-item');
+  const randomCode = Math.random().toString(36).substring(2, 7).toUpperCase();
+
+  let bashScript = `#!/bin/bash\n\n`;
+  bashScript += `mkdir -p ./img/${randomCode}\n\n`;
+
+  galleryItems.forEach((item, index) => {
+    const srcInput = item.querySelector('input[placeholder="Enter image src"]');
+    const src = srcInput.value;
+    const extension = src.split('.').pop();
+    const uniqueCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+    item.dataset.uniqueCode = uniqueCode;
+
+    bashScript += `cp "${src}" "./img/${randomCode}/${uniqueCode}.${extension}"\n`;
+    bashScript += `sips -Z 512 "./img/${randomCode}/${uniqueCode}.${extension}" --out "./img/${randomCode}/${uniqueCode}_T.${extension}"\n`;
+  });
+
+  bashScript += `\necho '${generateGalleryCode(randomCode, galleryItems)}'\n`;
+
+  const blob = new Blob([bashScript], { type: 'text/plain' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'gallery_script.sh';
+  link.style.display = 'none';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+  // Drag and drop event handlers
+  dropZone.addEventListener('dragover', (e) => {
+   e.preventDefault();
+   e.stopPropagation();
+   e.dataTransfer.dropEffect = 'copy';
+  });
+
+  dropZone.addEventListener('drop', (e) => {
+   e.preventDefault();
+   e.stopPropagation();
+   const files = e.dataTransfer.files;
+   [...files].forEach(createThumbnail);
+  });
+
+  // File input change event handler
+  fileInput.addEventListener('change', (e) => {
+   const files = e.target.files;
+   [...files].forEach(createThumbnail);
+  });
+
+  // Add button click event handler
+  addButton.addEventListener('click', () => {
+   fileInput.click(); // Trigger the file input
+  });
+
+  // Export Script button click event handler
+  exportButton.addEventListener('click', generateBashScript);
+ </script>
+</body>
+</html>
